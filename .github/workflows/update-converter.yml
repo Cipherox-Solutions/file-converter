@@ -23,7 +23,7 @@ jobs:
         run: |
           echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} '
-            cd /home/ec2-user/file-converter
+            cd /home/ubuntu/file-converter
             git pull
             npm i
             nohup npm run start > output.log 2>&1 & 
