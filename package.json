@@ -9,16 +9,26 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "This repository is for a node application",
   "dependencies": {
+    "@fastify/formbody": "^8.0.0",
     "@fastify/mongodb": "^8.0.0",
+    "@fastify/multipart": "^9.0.0",
+    "axios": "^1.7.7",
     "body-parser": "^1.20.2",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "fastify": "^4.28.1",
+    "fastify": "^5.0.0",
+    "fastify-mariadb": "^2.0.0",
     "fastify-plugin": "^4.5.1",
+    "imagemagick": "^0.1.3",
     "jimp": "^1.6.0",
     "mongoose": "^8.6.2",
     "multer": "^1.4.5-lts.1",
+    "node-imagemagick": "^0.1.8",
     "sharp": "^0.33.5"
+  },
+  "directories": {
+    "test": "tests"
   }
 }
