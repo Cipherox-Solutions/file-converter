@@ -1,68 +1,79 @@
 const formatController = require('../config/index');
 const fs = require('fs');
 const path = require('path');
-const Validator = require('../utils/Validator');
+const os = require('os');  // For determining user's desktop path
+const CxValidator = require('../config/validator');
 
-exports.convertImage = async (req, reply) => {
+// Helper function to check if the conversion format is supported
+const isSupportedFormat = (fromFormat, toFormat) => {
+  return formatController.find((conversion) =>
+    conversion.fromFormat === fromFormat && conversion.toFormat === toFormat
+  );
+};
+
+// Helper function to validate user input
+const validateInput = (conversionObj, userDataset) => {
+  if (conversionObj.validate) {
+    const validationRules = conversionObj.validate;
+    const validator = new CxValidator(validationRules, userDataset);
+    return validator.validateDataset(validationRules, userDataset);
+  }
+  return null; // No validation required
+};
+
+
+// Main function to handle image conversion
+exports.indexContainer = async (req, reply, options) => {
+  console.log('req.body:', req.body.resize);
   try {
-    const { fromFormat, toFormat } = req.params;
-    const { resize, crop, pdf_standard } = req;  // Assuming request body contains parameters
+    const { fromFormat, toFormat } = options;
+    const { resize, crop, "pdf-standard": pdfStandard, rotate, flip } = req; // Extract additional options from request body
 
-    if (!formatController[fromFormat] || !formatController[fromFormat][toFormat]) {
+    // // Check if the conversion format is supported
+    const conversionObj = isSupportedFormat(fromFormat, toFormat);
+    if (!conversionObj) {
       return reply.status(404).send({
         error: `Conversion from ${fromFormat} to ${toFormat} is not supported.`,
       });
     }
 
-    const conversionObj = formatController[fromFormat][toFormat];
-    console.log('conversionObj', conversionObj.handler);
+    const userDataset = { 'pdf-standard': "A4" }; // Add any necessary user data
 
-    // Validate if necessary
-    if (conversionObj.validate) {
-      const validator = new Validator();
-      
-      const validationRules = conversionObj.validate;
-      
-      // Check if `toFormat` is `pdf` and run the validation
-      if (toFormat === 'pdf') {
-        const validationErrors = validator.validate(validationRules.pdf_standrend, req);
+    // Validate input if necessary
+    const validationErrors = validateInput(conversionObj, userDataset);
+    if (validationErrors && Object.keys(validationErrors).length > 0) {
+      return reply.status(400).send({
+        error: validationErrors
+      });
+    }
+    // 
+    const { file } = req.body;
 
-        if (validationErrors) {
-          return reply.status(400).send({
-            error: validationErrors,
-          });
-        }
-      }
+    // Get file details
+    const fileName = file.filename;
+    const fileBuffer = await file.toBuffer();
+    const savePath = path.join(__dirname, 'temp', fileName);
+
+    if (!fs.existsSync(path.dirname(savePath))) {
+      fs.mkdirSync(path.dirname(savePath), { recursive: true });
     }
 
-    const inputFile = await req.file();
-    const tempDir = path.join(__dirname, '../temp');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-
-    const localFilePath = path.join(tempDir, inputFile.filename);
-    const fileStream = fs.createWriteStream(localFilePath);
-    await inputFile.file.pipe(fileStream);
-
-    await new Promise((resolve, reject) => {
-      fileStream.on('finish', resolve);
-      fileStream.on('error', reject);
-    });
-    console.log('localFilePath', localFilePath);
-
+    fs.writeFileSync(savePath, fileBuffer);
     const outputFile = await new Promise((resolve, reject) => {
-      conversionObj.handler(localFilePath, toFormat, { rotate: 180, resize, crop }, (err, result) => {
+      conversionObj.handler(savePath, toFormat, { rotate, resize:{width:10000,height:30000}, crop, pdfStandard, flip }, (err, result) => {
         if (err) {
           return reject(err);
         }
         resolve(result);
       });
     });
-
-    // Send the output file back
-    return reply.send(outputFile);
+    // Send response
+    const desktopPath = path.join(os.homedir(), 'Desktop');
+    const outputFilePath = path.join(desktopPath, path.basename(outputFile));
+    return reply.send(outputFilePath);
   } catch (error) {
     console.error('Error during conversion:', error);
-    reply.status(500).send({
+    return reply.status(500).send({
       error: 'Internal Server Error',
     });
   }

@@ -38,6 +38,16 @@ class Validator {
                                     this.errors.push(`${field} must be one of ${params.join(', ')}`);
                                 }
                                 break;
+                            case 'integer':
+                                if (!Number.isInteger(fieldValue)) {
+                                    this.errors.push(`${field} must be an integer`);
+                                }
+                                break;
+                            case 'min':
+                                if (fieldValue < params) {
+                                    this.errors.push(`${field} must be at least ${params}`);
+                                }
+                                break;
                             // Add more validation methods as needed
                             default:
                                 break;

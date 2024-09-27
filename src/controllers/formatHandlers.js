@@ -3,6 +3,7 @@ const fs = require('fs');
 const axios = require('axios');
 const { exec } = require('child_process');
 const im = require('imagemagick');
+const sharp = require('sharp');
 
 // Helper to download an image from a URL
 const downloadImage = async (inputFile, tempDir) => {
@@ -79,14 +80,49 @@ const imageMagicHandler = async (inputFile, outputFormat, options = {}, callback
             return callback(new Error(`Local file not found: ${inputFile}`));
         }
     }
-
     // Define the output file path (saving to the desktop as per your requirement)
     const outputFile = path.join('/Users/apple/Desktop', `convertedImage.${outputFormat}`);
     console.log('outputFile', outputFile);
 
-    // Run ImageMagick to convert the image
     runImageMagickCommand(localInputFile, outputFile, options, callback);
 };
+
+//sharp image handler 
+
+const sharpImageHandler = async (inputFile, outputFormat, options = {}) => {
+    const outputFile = path.basename(inputFile, path.extname(inputFile)) + `.${outputFormat}`;
+    try {
+        let image = sharp(inputFile)
+        if (options.resize) {
+            image = image.resize(options.resize.width, options.resize.height);
+
+        }
+        if (options.crop) {
+            image = image.extract({
+                left: options.crop.left,
+                top: options.crop.top,
+                width: options.crop.width,
+                height: options.crop.height,
+            });
+        }
+        if (options.rotate) {
+            image = image.rotate(options.rotate);
+        }
+
+        if (options.flip) {
+            image = image.flip();
+        }
+
+        if (options.flop) {
+            image = image.flop();
+        }
+        await image.toFormat(outputFormat).toFile(outputFile);
+        console.log(`Conversion successful: ${outputFile}`);
+    }
+    catch (error) {
+        console.log(error)
+    }
+}
 
 // Specific format handlers
 const jpgToBmpHandler = (file, options, callback) => imageMagicHandler(file, 'bmp', options, callback);
@@ -99,5 +135,6 @@ module.exports = {
     jpgToPngHandler,
     jpgToPdfHandler,
     pngToSvgHandler,
-    imageMagicHandler
+    imageMagicHandler,
+    sharpImageHandler
 };
