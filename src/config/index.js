@@ -40,7 +40,7 @@ const formatController = [
     }
   },
   {
-    fromFormat: ' v',
+    fromFormat: 'jpg',
     toFormat: 'gif',
     handler: imageMagicHandler,
     validate: {},
@@ -169,7 +169,8 @@ const formatController = [
         }
       }
     }
-  }
+  },
+  
 ];
 
 module.exports = formatController;

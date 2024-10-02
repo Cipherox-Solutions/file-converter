@@ -24,10 +24,10 @@ const validateInput = (conversionObj, userDataset) => {
 
 // Main function to handle image conversion
 exports.indexContainer = async (req, reply, options) => {
-  console.log('req.body:', req.body.resize);
+  console.log('req.body:', req);
   try {
     const { fromFormat, toFormat } = options;
-    const { resize, crop, "pdf-standard": pdfStandard, rotate, flip } = req; // Extract additional options from request body
+    const { resize, crop, "pdf-standard": pdfStandard, rotate, flip } = req; 
 
     // // Check if the conversion format is supported
     const conversionObj = isSupportedFormat(fromFormat, toFormat);
@@ -37,7 +37,7 @@ exports.indexContainer = async (req, reply, options) => {
       });
     }
 
-    const userDataset = { 'pdf-standard': "A4" }; // Add any necessary user data
+    const userDataset = { 'pdf-standard': "A4" };
 
     // Validate input if necessary
     const validationErrors = validateInput(conversionObj, userDataset);
@@ -60,7 +60,7 @@ exports.indexContainer = async (req, reply, options) => {
 
     fs.writeFileSync(savePath, fileBuffer);
     const outputFile = await new Promise((resolve, reject) => {
-      conversionObj.handler(savePath, toFormat, { rotate, resize:{width:10000,height:30000}, crop, pdfStandard, flip }, (err, result) => {
+      conversionObj.handler(savePath, toFormat, { rotate, resize: { width: 10000, height: 30000 }, crop, pdfStandard, flip:flip == 0 ? false : true  }, (err, result) => {
         if (err) {
           return reject(err);
         }

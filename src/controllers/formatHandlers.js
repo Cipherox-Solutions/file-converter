@@ -4,7 +4,7 @@ const axios = require('axios');
 const { exec } = require('child_process');
 const im = require('imagemagick');
 const sharp = require('sharp');
-
+const os = require('os')
 // Helper to download an image from a URL
 const downloadImage = async (inputFile, tempDir) => {
     const fileExtension = path.extname(inputFile) || '.jpg';
@@ -61,13 +61,11 @@ const runImageMagickCommand = (inputFile, outputFile, options, callback) => {
 
 // Main handler for ImageMagick operations
 const imageMagicHandler = async (inputFile, outputFormat, options = {}, callback) => {
-    console.log('inputFile:', inputFile);
-
-    const tempDir = path.join(__dirname, 'temp');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-
-    // Check if the input is a URL and download it if necessary
+    // Define a temporary directory based on the OS
+    const tempDir = path.join(os.tmpdir(), 'imageMagickTemp'); 
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
     let localInputFile = inputFile;
+
     if (inputFile.startsWith('http://') || inputFile.startsWith('https://')) {
         try {
             localInputFile = await downloadImage(inputFile, tempDir);
@@ -80,12 +78,27 @@ const imageMagicHandler = async (inputFile, outputFormat, options = {}, callback
             return callback(new Error(`Local file not found: ${inputFile}`));
         }
     }
-    // Define the output file path (saving to the desktop as per your requirement)
-    const outputFile = path.join('/Users/apple/Desktop', `convertedImage.${outputFormat}`);
-    console.log('outputFile', outputFile);
 
+    // Define the output file path based on the OS
+    let outputDir;
+    if (os.platform() === 'win32') {
+        // For Windows, use 'Downloads' folder as an example (you can customize this)
+        outputDir = path.join(os.homedir(), 'Downloads'); 
+    } else {
+        // For macOS/Linux, use 'Desktop' as per the previous requirement
+        outputDir = path.join(os.homedir(), 'Desktop');
+    }
+    console.log('os.platform()',os.platform())
+    // Ensure the output directory exists
+    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+    const outputFile = path.join(outputDir, `convertedImage.${outputFormat}`);
+
+    // Run the image conversion using ImageMagick
     runImageMagickCommand(localInputFile, outputFile, options, callback);
 };
+
+
 
 //sharp image handler 
 
