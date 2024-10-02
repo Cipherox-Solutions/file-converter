@@ -22,23 +22,23 @@ fastify.register(require('@fastify/cors'), {
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 });
-fastify.register(require('fastify-mariadb'), {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  connectionLimit: 5,
-  cachingRsaPublicKey: '/Users/apple/Desktop/keys/public-key.pem',
-  allowPublicKeyRetrieval: true
-}).after((err) => {
-  if (err) {
-    console.log(err);
-    fastify.log.error('Error starting fastify-mariadb:', err);
-    return;  // Exit if there's an error
-  }
-  fastify.log.info('fastify-mariadb started successfully');
-});
+// fastify.register(require('fastify-mariadb'), {
+//   host: process.env.DB_HOST,
+//   user: process.env.DB_USER,
+//   password: process.env.DB_PASSWORD,
+//   database: process.env.DB_NAME,
+//   port: process.env.DB_PORT,
+//   connectionLimit: 5,
+//   cachingRsaPublicKey: '/Users/apple/Desktop/keys/public-key.pem',
+//   allowPublicKeyRetrieval: true
+// }).after((err) => {
+//   if (err) {
+//     console.log(err);
+//     fastify.log.error('Error starting fastify-mariadb:', err);
+//     return;  // Exit if there's an error
+//   }
+//   fastify.log.info('fastify-mariadb started successfully');
+// });
 
 fastify.get('/mariadb/time', (req, reply) => {
   fastify.mariadb.query('SELECT now()', (err, result) => {
