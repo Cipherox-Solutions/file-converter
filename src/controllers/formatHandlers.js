@@ -61,8 +61,7 @@ const runImageMagickCommand = (inputFile, outputFile, options, callback) => {
 
 // Main handler for ImageMagick operations
 const imageMagicHandler = async (inputFile, outputFormat, options = {}, callback) => {
-    // Define a temporary directory based on the OS
-    const tempDir = path.join(os.tmpdir(), 'imageMagickTemp'); 
+    const tempDir = path.join(os.tmpdir(), 'imageMagickTemp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
     let localInputFile = inputFile;
 
@@ -73,28 +72,19 @@ const imageMagicHandler = async (inputFile, outputFormat, options = {}, callback
             return callback(error);
         }
     } else {
-        // Ensure the local file exists before proceeding
         if (!fs.existsSync(inputFile)) {
             return callback(new Error(`Local file not found: ${inputFile}`));
         }
     }
 
-    // Define the output file path based on the OS
     let outputDir;
     if (os.platform() === 'win32') {
-        // For Windows, use 'Downloads' folder as an example (you can customize this)
-        outputDir = path.join(os.homedir(), 'Downloads'); 
+        outputDir = path.join(os.homedir(), 'Downloads');
     } else {
-        // For macOS/Linux, use 'Desktop' as per the previous requirement
         outputDir = path.join(os.homedir(), 'Desktop');
     }
-    console.log('os.platform()',os.platform())
-    // Ensure the output directory exists
     if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
     const outputFile = path.join(outputDir, `convertedImage.${outputFormat}`);
-
-    // Run the image conversion using ImageMagick
     runImageMagickCommand(localInputFile, outputFile, options, callback);
 };
 
@@ -108,7 +98,6 @@ const sharpImageHandler = async (inputFile, outputFormat, options = {}) => {
         let image = sharp(inputFile)
         if (options.resize) {
             image = image.resize(options.resize.width, options.resize.height);
-
         }
         if (options.crop) {
             image = image.extract({

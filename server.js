@@ -10,7 +10,18 @@ fastify.register(formbody);
 
 // Register routes with the prefix /convert
 fastify.register(convertRoutes, { prefix: '/convert' });
-
+fastify.register(require('@fastify/cors'), {
+  origin: (origin, cb) => {
+    const allowedOrigins = ['*'];
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      cb(null, true);
+    } else {
+      // Reject the request
+      cb(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+});
 fastify.register(require('fastify-mariadb'), {
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
