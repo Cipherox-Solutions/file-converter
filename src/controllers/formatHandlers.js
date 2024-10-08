@@ -2,11 +2,17 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const { exec } = require('child_process');
-const im = require('imagemagick');
 const sharp = require('sharp');
-const os = require('os')
+const os = require('os');
+
+// Define the temp directory relative to the project directory
+const tempDir = path.join(__dirname, '../temp');
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+}
+
 // Helper to download an image from a URL
-const downloadImage = async (inputFile, tempDir) => {
+const downloadImage = async (inputFile) => {
     const fileExtension = path.extname(inputFile) || '.jpg';
     const localInputFile = path.join(tempDir, `tempImage${fileExtension}`);
 
@@ -26,7 +32,6 @@ const downloadImage = async (inputFile, tempDir) => {
 const runImageMagickCommand = (inputFile, outputFile, options, callback) => {
     let command = `magick "${inputFile}"`;
 
-    // Add resize options if provided
     if (options.width || options.height) {
         const resizeOptions = [];
         if (options.width) resizeOptions.push(`${options.width}`);
@@ -34,68 +39,51 @@ const runImageMagickCommand = (inputFile, outputFile, options, callback) => {
         command += ` -resize ${resizeOptions.join('x')}`;
     }
 
-    // Add crop options if provided
-    if (options.crop) {
-        const { width, height, x, y } = options.crop;
-        command += ` -crop ${width}x${height}+${x}+${y}`;
-    }
-
-    // Add other options if provided
     if (options.rotate) {
         command += ` -rotate ${options.rotate}`;
     }
 
-    // Add flip or flop options
-    if (options.flip) command += ' -flip';  // Vertical flip
-    if (options.flop) command += ' -flop';  // Horizontal flip
+    if (options.flip) command += ' -flip';
+    if (options.flop) command += ' -flop';
 
-    // Specify the output file
     command += ` "${outputFile}"`;
 
-    // Execute the command
     exec(command, (err, stdout, stderr) => {
         if (err) return callback(new Error(`Conversion error: ${stderr || stdout}`));
-        callback(null, outputFile);
+        const fileStream = fs.createReadStream(outputFile);
+        callback(null, outputFile, fileStream);
     });
 };
 
 // Main handler for ImageMagick operations
 const imageMagicHandler = async (inputFile, outputFormat, options = {}, callback) => {
-    const tempDir = path.join(os.tmpdir(), 'imageMagickTemp');
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
     let localInputFile = inputFile;
 
     if (inputFile.startsWith('http://') || inputFile.startsWith('https://')) {
         try {
-            localInputFile = await downloadImage(inputFile, tempDir);
+            localInputFile = await downloadImage(inputFile);
         } catch (error) {
             return callback(error);
         }
-    } else {
-        if (!fs.existsSync(inputFile)) {
-            return callback(new Error(`Local file not found: ${inputFile}`));
-        }
+    } else if (!fs.existsSync(inputFile)) {
+        return callback(new Error(`Local file not found: ${inputFile}`));
     }
 
-    let outputDir;
-    if (os.platform() === 'win32') {
-        outputDir = path.join(os.homedir(), 'Downloads');
-    } else {
-        outputDir = path.join(os.homedir(), 'Desktop');
-    }
-    if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-    const outputFile = path.join(outputDir, `convertedImage.${outputFormat}`);
-    runImageMagickCommand(localInputFile, outputFile, options, callback);
+    const outputFile = path.join(tempDir, `convertedImage.${outputFormat}`);
+    runImageMagickCommand(localInputFile, outputFile, options, (error, outputFilePath) => {
+        if (error) return callback(error);
+
+        const fileStream = fs.createReadStream(outputFilePath);
+        callback(null, outputFilePath, fileStream);
+    });
 };
 
-
-
-//sharp image handler 
-
-const sharpImageHandler = async (inputFile, outputFormat, options = {}) => {
-    const outputFile = path.basename(inputFile, path.extname(inputFile)) + `.${outputFormat}`;
+// Sharp image handler
+const sharpImageHandler = async (inputFile, outputFormat, options = {}, callback) => {
+    const outputFile = path.join(tempDir, path.basename(inputFile, path.extname(inputFile)) + `.${outputFormat}`);
     try {
-        let image = sharp(inputFile)
+        let image = sharp(inputFile);
+
         if (options.resize) {
             image = image.resize(options.resize.width, options.resize.height);
         }
@@ -110,33 +98,23 @@ const sharpImageHandler = async (inputFile, outputFormat, options = {}) => {
         if (options.rotate) {
             image = image.rotate(options.rotate);
         }
-
         if (options.flip) {
             image = image.flip();
         }
-
         if (options.flop) {
             image = image.flop();
         }
-        await image.toFormat(outputFormat).toFile(outputFile);
-        console.log(`Conversion successful: ${outputFile}`);
-    }
-    catch (error) {
-        console.log(error)
-    }
-}
 
-// Specific format handlers
-const jpgToBmpHandler = (file, options, callback) => imageMagicHandler(file, 'bmp', options, callback);
-const jpgToPngHandler = (file, options, callback) => imageMagicHandler(file, 'png', options, callback);
-const jpgToPdfHandler = (file, options, callback) => imageMagicHandler(file, 'pdf', options, callback);
-const pngToSvgHandler = (file, options, callback) => imageMagicHandler(file, 'svg', options, callback);
+        await image.toFormat(outputFormat).toFile(outputFile);
+
+        const readStream = fs.createReadStream(outputFile);
+        callback(null, outputFile, readStream);
+    } catch (error) {
+        callback(error);
+    }
+};
 
 module.exports = {
-    jpgToBmpHandler,
-    jpgToPngHandler,
-    jpgToPdfHandler,
-    pngToSvgHandler,
     imageMagicHandler,
-    sharpImageHandler
+    sharpImageHandler,
 };

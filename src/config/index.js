@@ -14,56 +14,68 @@ const formatController = [
       },
     },
     schema: {
+      body: {
+        type: 'object',
+        properties: {
+          file: { type: 'object' }, 
+          pdfStandard: { type: 'string', enum: ['PDF/A', 'PDF/X'], description: 'Specify the PDF standard (e.g., PDF/A, PDF/X)' }
+        },
+        required: ['file', 'pdfStandard']
+      },
       params: {
         type: 'object',
         properties: {
-          fromFormat: { type: 'string', enum: ['jpg'] },
-          toFormat: { type: 'string', enum: ['pdf'] }
-        }
-      },
-      body: {
-        type: 'object',
-        required: ['data'],
-        properties: {
-          data: { type: 'string' }
+          fromFormat: { type: 'string' },
+          toFormat: { type: 'string' }
         }
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
             message: { type: 'string' }
           }
         }
       }
     }
+    
   },
   {
     fromFormat: 'jpg',
     toFormat: 'gif',
     handler: imageMagicHandler,
     validate: {},
-    schema: {
+    schema:{
+      body: {
+        type: 'object',
+        properties: {
+          file: { type: 'object' }, 
+        },
+        required: ['file']
+      },
       params: {
         type: 'object',
         properties: {
-          fromFormat: { type: 'string', enum: ['jpg'] },
-          toFormat: { type: 'string', enum: ['gif'] }
-        }
-      },
-      body: {
-        type: 'object',
-        required: ['data'],
-        properties: {
-          data: { type: 'string' }
+          fromFormat: { type: 'string' },
+          toFormat: { type: 'string' }
         }
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
             message: { type: 'string' }
           }
         }
@@ -75,26 +87,32 @@ const formatController = [
     toFormat: 'png',
     handler: sharpImageHandler,
     validate: {},
-    schema: {
+    schema:{
+      body: {
+        type: 'object',
+        properties: {
+          file: { type: 'object' }, 
+        },
+        required: ['file',]
+      },
       params: {
         type: 'object',
         properties: {
-          fromFormat: { type: 'string', enum: ['jpg'] },
-          toFormat: { type: 'string', enum: ['png'] }
-        }
-      },
-      body: {
-        type: 'object',
-        required: ['data'],
-        properties: {
-          data: { type: 'string' }
+          fromFormat: { type: 'string' },
+          toFormat: { type: 'string' }
         }
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
           }
         }
       }
@@ -113,26 +131,31 @@ const formatController = [
         ],
       },
     },
-    schema: {
+    schema:{
+      body: {
+        type: 'object',
+        properties: {
+          file: { type: 'object' }, 
+        },
+        required: ['file',]
+      },
       params: {
         type: 'object',
         properties: {
-          fromFormat: { type: 'string', enum: ['png'] },
-          toFormat: { type: 'string', enum: ['pdf'] }
-        }
-      },
-      body: {
-        type: 'object',
-        required: ['data'],
-        properties: {
-          data: { type: 'string' }
+          fromFormat: { type: 'string' },
+          toFormat: { type: 'string' }
         }
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
             message: { type: 'string' }
           }
         }
@@ -144,33 +167,109 @@ const formatController = [
     toFormat: 'jpg',
     handler: imageMagicHandler,
     validate: {},
-    schema: {
+    schema:{
+      body: {
+        type: 'object',
+        properties: {
+          file: { type: 'object' }, 
+        },
+        required: ['file',]
+      },
       params: {
         type: 'object',
         properties: {
-          fromFormat: { type: 'string', enum: ['png'] },
-          toFormat: { type: 'string', enum: ['jpg'] }
-        }
-      },
-      body: {
-        type: 'object',
-        required: ['data'],
-        properties: {
-          data: { type: 'string' }
+          fromFormat: { type: 'string' },
+          toFormat: { type: 'string' }
         }
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            success: { type: 'boolean' },
+            message: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
             message: { type: 'string' }
           }
         }
       }
     }
   },
-  
+  {
+    fromFormat: 'jpg',
+    toFormat: 'tiff',
+    handler: imageMagicHandler,
+    validate: {},
+    schema:{
+      body: {
+        type: 'object',
+        properties: {
+          file: { type: 'object' }, 
+        },
+        required: ['file',]
+      },
+      params: {
+        type: 'object',
+        properties: {
+          fromFormat: { type: 'string' },
+          toFormat: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        }
+      }
+    }
+  },
+  {
+    fromFormat: 'tiff',
+    toFormat: 'jpg',
+    handler: imageMagicHandler,
+    validate: {},
+    schema:{
+      body: {
+        type: 'object',
+        properties: {
+          file: { type: 'object' }, 
+        },
+        required: ['file',]
+      },
+      params: {
+        type: 'object',
+        properties: {
+          fromFormat: { type: 'string' },
+          toFormat: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' }
+          }
+        }
+      }
+    }
+  },
 ];
 
 module.exports = formatController;

@@ -1,106 +1,121 @@
-const formatController = require('../config/index');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');  // For determining user's desktop path
+const crypto = require('crypto'); 
+const formatController = require('../config/index');
 const CxValidator = require('../config/validator');
+const axios = require('axios');
+const generateUniqueHash = require('../utils/uniqueHash');
+const pool = require('../config/database')
 
-// Helper function to check if the conversion format is supported
+// Function to generate a unique hash based on the output file path
+const generatePathHash = (filePath) => {
+  return crypto.createHash('sha256').update(filePath).digest('hex');
+};
+
 const isSupportedFormat = (fromFormat, toFormat) => {
-  return formatController.find((conversion) =>
+  return formatController.find(conversion =>
     conversion.fromFormat === fromFormat && conversion.toFormat === toFormat
   );
 };
 
-// Helper function to validate user input
 const validateInput = (conversionObj, userDataset) => {
   if (conversionObj.validate) {
     const validationRules = conversionObj.validate;
     const validator = new CxValidator(validationRules, userDataset);
     return validator.validateDataset(validationRules, userDataset);
   }
-  return null; // No validation required
+  return null;
 };
 
-// Main function to handle image conversion
+// Function to download a file (used in your route)
+const downloadFile = async () => {
+  try {
+    const response = await axios.get('http://localhost:3000/download', {
+      responseType: 'blob',
+    });
+    console.log('Response:', response);
+    return response;
+  } catch (error) {
+    console.error('Error downloading the file:', error);
+  }
+};
+
+// Function to save the hash into the database
+const saveHashToDB = async (fileHash, filePath, expiresAt = null, isPublic = false) => {
+  try {
+    const connection = await pool.getConnection();
+    const query = `
+      INSERT INTO hOqil_temp_links (file_hash, file_path, expires_at)
+      VALUES (?, ?, ?)
+    `;
+    await connection.query(query, [fileHash, filePath, expiresAt]);
+    connection.release();
+    console.log('File hash saved successfully!');
+  } catch (error) {
+    console.error('Error saving file hash to the database:', error);
+  }
+};
+
 exports.indexContainer = async (req, reply, options) => {
   try {
     const { fromFormat, toFormat } = options;
-    const { resize, crop, "pdf-standard": pdfStandard, rotate, flip } = req; 
+    const { resize, "pdf-standard": pdfStandard, rotate, flip } = req.body;
 
-    // Check if the conversion format is supported
-    const conversionObj = isSupportedFormat(fromFormat, toFormat);
-    if (!conversionObj) {
-      return reply.status(404).send({
-        error: `Conversion from ${fromFormat} to ${toFormat} is not supported.`,
-      });
+    if (!req.body?.file) {
+      return reply.status(400).send({ error: 'No file provided. Please upload a file for conversion.' });
     }
 
-    const userDataset = { 'pdf-standard': "A4" };
+    const conversionObj = isSupportedFormat(fromFormat, toFormat);
+    if (!conversionObj) {
+      return reply.status(404).send({ error: `Conversion from ${fromFormat} to ${toFormat} is not supported.` });
+    }
 
-    // Validate input if necessary
+    const userDataset = { 'pdf-standard': pdfStandard || "A4" };
     const validationErrors = validateInput(conversionObj, userDataset);
+
     if (validationErrors && Object.keys(validationErrors).length > 0) {
-      return reply.status(400).send({
-        error: validationErrors,
-      });
+      return reply.status(400).send({ error: validationErrors });
     }
 
     const { file } = req.body;
-
-    // Get file details
     const fileName = file.filename;
-    const fileBuffer = await file.toBuffer();
     const savePath = path.join(__dirname, 'temp', fileName);
 
-    // Create temp directory if it doesn't exist
-    if (!fs.existsSync(path.dirname(savePath))) {
-      fs.mkdirSync(path.dirname(savePath), { recursive: true });
+    fs.mkdirSync(path.dirname(savePath), { recursive: true });
+    await fs.promises.writeFile(savePath, await file.toBuffer());
+
+    const outputFile = await new Promise((resolve, reject) => {
+      conversionObj.handler(savePath, toFormat, { rotate, resize, pdfStandard, flip: !!flip }, (err, resultFilePath) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve(resultFilePath);
+      });
+    });
+
+    if (!outputFile || !fs.existsSync(outputFile)) {
+      return reply.status(404).send({ error: 'File not found after conversion.' });
     }
 
-    // Save the file to the temp directory
-    fs.writeFileSync(savePath, fileBuffer);
+    const filePath = path.resolve(outputFile);
+    const fileNames = path.basename(filePath);
+    const stream = fs.createReadStream(outputFile);
 
-    // Process conversion
-    const outputFile = await new Promise((resolve, reject) => {
-      conversionObj.handler(
-        savePath,
-        toFormat,
-        {
-          rotate,
-          resize: { width: 10000, height: 30000 },
-          crop,
-          pdfStandard,
-          flip: flip == undefined || flip == 0 ? false : true,
-        },
-        (err, result) => {
-          if (err) {
-            return reject(err);
-          }
-          resolve(result);
-        }
-      );
-    });
+    // Generate a unique hash of the output file path
+    const uniqueHash = generatePathHash(filePath);
+    console.log('Unique hash for the output file:', uniqueHash);
 
-    // Ensure the output file path is correct
-    const desktopPath = path.join(os.homedir(), 'Desktop');
-    const outputFilePath = path.join(desktopPath, `converted_${fileName}`);
+    // Save the unique hash and file details into the database
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // Set expiration to 24 hours from now
+    await saveHashToDB(uniqueHash, filePath, expiresAt); // Save with default `is_public` as false
 
-    // Write the result to the output file path
-    fs.writeFileSync(outputFilePath, outputFile);
-
-    // Stream the file back to the client
-    const fileStream = fs.createReadStream(outputFilePath);
-
-    // Set the headers for file download
-    reply.header('Content-Disposition', `attachment; filename="${path.basename(outputFilePath)}"`);
-    reply.header('Content-Type', 'application/octet-stream');
-
-    // Send the file stream in the response
-    return reply.send(fileStream);
+    reply
+      .header('Content-Disposition', `attachment; filename=${fileNames}`)
+      .type('application/octet-stream')
+      .code(200);
+    downloadFile(); // Optional call to download function
+    return reply.status(200).send(stream);
   } catch (error) {
-    console.error('Error during conversion:', error);
-    return reply.status(500).send({
-      error: 'Internal Server Error',
-    });
+    return reply.status(500).send({ error: 'Internal Server Error' });
   }
 };
